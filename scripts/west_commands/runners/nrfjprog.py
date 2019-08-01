@@ -100,13 +100,14 @@ class NrfJprogBinaryRunner(ZephyrBinaryRunner):
 
         self.logger.info('Flashing file: {}'.format(self.hex_))
         if self.erase:
-            commands.extend([
-                ['nrfjprog',
-                 '--eraseall',
-                 '-f', self.family,
-                 '--snr', board_snr],
-                program_cmd
-            ])
+            commands.append(['nrfjprog', '--eraseall','-f', self.family,
+                             '--snr', board_snr])
+            # System reset used by --eraseall may be disabled by
+            # the M33 chip, so do a debug reset to make sure.
+            if self.family == 'NRF91':
+                commands.append(['nrfjprog', '--debugreset', '-f', self.family,
+                                '--snr', board_snr])
+            commands.append(program_cmd)
         else:
             if self.family == 'NRF52':
                 commands.append(program_cmd + ['--sectoranduicrerase'])
