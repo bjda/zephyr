@@ -32,6 +32,7 @@ struct mfd_npm6001_config {
 	struct i2c_dt_spec i2c;
 	uint8_t buck_pad_val;
 	uint8_t pad_val;
+	int32_t startup_timeout_us;
 };
 
 static int mfd_npm6001_init(const struct device *dev)
@@ -42,9 +43,16 @@ static int mfd_npm6001_init(const struct device *dev)
 	if (!i2c_is_ready_dt(&config->i2c)) {
 		return -ENODEV;
 	}
-
+	
 	/* always select BUCK3 DAC (does not increase power consumption) */
 	ret = i2c_reg_write_byte_dt(&config->i2c, NPM6001_BUCK3SELDAC, 1U);
+
+	/* If the first operation fails, the nPM6001 may still be booting. Try again after a delay */
+	if (ret < 0 && &config->startup_timeout_us > 0) {
+		k_usleep(&config->startup_timeout_us);
+		ret = i2c_reg_write_byte_dt(&config->i2c, NPM6001_BUCK3SELDAC, 1U);
+	}
+
 	if (ret < 0) {
 		return ret;
 	}
@@ -84,6 +92,7 @@ static int mfd_npm6001_init(const struct device *dev)
 			     NPM6001_PADDRIVESTRENGTH_NINT_HIGH) |                                 \
 			    (DT_INST_PROP(inst, nordic_sda_high_drive) *                           \
 			     NPM6001_PADDRIVESTRENGTH_SDA_HIGH)),                                  \
+		.startup_timeout_us = DT_INST_PROP(inst, startup_timeout_us),                  \
 	};                                                                                         \
                                                                                                    \
 	DEVICE_DT_INST_DEFINE(inst, mfd_npm6001_init, NULL, NULL, &config##inst, POST_KERNEL,      \

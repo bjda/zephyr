@@ -52,3 +52,11 @@ properties:
   nordic,buck-mode2-pull-down:
     type: boolean
     description: Enable pull-down resistor for BUCK_MODE2 pin.
+
+  startup-timeout-us:
+    type: int
+    default: 2000
+    description: |
+        Time to delay initialization if the device does not respond at first, given in microseconds.
+        In case the device has just been powered on before initialization, this gives it time to
+        boot. If set to 0, initialization will not be retried.
