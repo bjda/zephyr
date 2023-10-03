@@ -19,6 +19,12 @@ config POWER_DOMAIN_GPIO
 	depends on GPIO
 	depends on TIMEOUT_64BIT
 
+config POWER_DOMAIN_GPIO
+	bool "Regulator power domain"
+	default y
+	depends on DT_HAS_POWER_DOMAIN_REGULATOR_ENABLED
+	depends on REGULATOR
+
 config POWER_DOMAIN_INTEL_ADSP
 	bool "Use Intel ADSP power gating mechanisms"
 	default y
