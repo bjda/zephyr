@@ -14,6 +14,8 @@
 #include <zephyr/dt-bindings/regulator/npm1300.h>
 #include <zephyr/sys/linear_range.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/device_runtime.h>
 
 /* nPM1300 voltage sources */
 enum npm1300_sources {
@@ -510,6 +512,31 @@ int regulator_npm1300_init(const struct device *dev)
 	return ret;
 }
 
+static int regulator_npm1300_pm_action(const struct device *dev,
+                           enum pm_device_action action)
+{
+    switch (action) {
+    case PM_DEVICE_ACTION_RESUME:
+        regulator_enable(dev);
+        pm_device_children_action_run(dev, PM_DEVICE_ACTION_TURN_ON, NULL); /* notify children */
+        break;
+    case PM_DEVICE_ACTION_SUSPEND:
+        pm_device_children_action_run(dev, PM_DEVICE_ACTION_TURN_OFF, NULL); /* notify children */
+        regulator_disable(dev);
+        break;
+    case PM_DEVICE_ACTION_TURN_ON:
+        regulator_npm1300_init(dev);
+        break;
+    case PM_DEVICE_ACTION_TURN_OFF:
+        /* TODO: put relevant GPIOs in low-power states */
+        break;
+    default:
+        return -ENOTSUP;
+    }
+
+    return 0;
+}
+
 static const struct regulator_driver_api api = {.enable = regulator_npm1300_enable,
 						.disable = regulator_npm1300_disable,
 						.count_voltages = regulator_npm1300_count_voltages,
@@ -530,8 +557,9 @@ static const struct regulator_driver_api api = {.enable = regulator_npm1300_enab
 		.retention_gpios = GPIO_DT_SPEC_GET_OR(node_id, retention_gpios, {0}),             \
 		.pwm_gpios = GPIO_DT_SPEC_GET_OR(node_id, pwm_gpios, {0})};                        \
                                                                                                    \
-	DEVICE_DT_DEFINE(node_id, regulator_npm1300_init, NULL, &data_##id, &config_##id,          \
-			 POST_KERNEL, CONFIG_REGULATOR_NPM1300_INIT_PRIORITY, &api);
+	PM_DEVICE_DT_DEFINE(node_id, regulator_npm1300_pm_action);                                     \
+	DEVICE_DT_DEFINE(node_id, regulator_npm1300_init, PM_DEVICE_DT_GET(node_id), &data_##id,       \
+					 &config_##id, POST_KERNEL, CONFIG_REGULATOR_NPM1300_INIT_PRIORITY, &api);
 
 #define REGULATOR_NPM1300_DEFINE_COND(inst, child, source)                                         \
 	COND_CODE_1(DT_NODE_EXISTS(DT_INST_CHILD(inst, child)),                                    \

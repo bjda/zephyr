@@ -33,6 +33,7 @@ description: |
 compatible: "nordic,npm1300-regulator"
 
 include: base.yaml
+include: power-domain.yaml
 
 properties:
   dvs-gpios:
